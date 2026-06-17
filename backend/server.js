@@ -32,23 +32,19 @@ connectMogoose()
 
 let mydata
 
-try {
-    mydata = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 587,
-        secure: true,
-        auth: {
-            user: 'mostafizurrahmanmd43@gmail.com',
-            pass: process.env.EMAIL_PASS
-        },
-        tls: {rejectUnauthorized: false},
-        connectionTimeout: 15000, 
-        greetingTimeout: 15000,
-        socketTimeout: 15000
-    })
-} catch (error) {
-    console.log('error on the email pass', error)
-}
+mydata = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465, 
+    secure: true,
+    auth: {
+        user: 'mostafizurrahmanmd43@gmail.com',
+        pass: process.env.EMAIL_PASS 
+    },
+    tls: {
+        rejectUnauthorized: false
+    }
+})
+
 
 app.post('/api/register', async (req, res) => {
     try {
