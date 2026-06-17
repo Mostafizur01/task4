@@ -38,7 +38,8 @@ try {
         auth: {
             user: 'mostafizurrahmanmd43@gmail.com',
             pass: process.env.EMAIL_PASS
-        }
+        },
+        tls: {rejectUnauthorized: false}
     })
 } catch (error) {
     console.log('error on the email pass', error)
