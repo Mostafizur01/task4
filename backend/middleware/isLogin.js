@@ -6,7 +6,9 @@ dotenv.config()
 
 const  login = async (req, res, next) => {
     try {
-        const token = req.headers.authorization?.split(' ')[1] || req.headers.islogin
+        const token = req.headers.authorization?.split(' ')[1] || 
+                      req.headers.islogin || 
+                      req.headers.islogng;
         if (!token) {
             return res.status(250).json({ success: false, error: 'You have to login', redirectTo: `${process.env.FRONTEND_URL}/login`})
         }
@@ -23,8 +25,8 @@ const  login = async (req, res, next) => {
         next()
     } catch (error) {
         console.log ('middleware problem: ', error)
-        return res.status(401).json({ 
-            success: false, 
+        return res.status(401).json({
+            success: false,
             error: 'Token expired or invalid', 
             redirectTo: `${process.env.FRONTEND_URL}/login`
         })
