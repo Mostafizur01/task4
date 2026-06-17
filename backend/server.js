@@ -62,7 +62,7 @@ app.post('/api/register', async (req, res) => {
         await newUser.save()
 
         const jwtToken = jwt.sign({ id: newUser._id, email: newUser.email }, process.env.JWT || 'asdfjhlahksdf', { expiresIn: '1d' })
-        const verifiedTokenLink = `${process.env.BACKEND_URL}/api/verify/${token}`
+        const verifiedTokenLink = `${process.env.BACKEND_URL}/api/verify/${jwtToken}`
         const emailBody = {
             from: '"task4" <mostafizurrahmanmd43@gmail.com>',
             to: email,
@@ -76,7 +76,7 @@ app.post('/api/register', async (req, res) => {
                 `
         }
 
-        mydata.sendMail(emailBody).catch((err) => console.log('Email send failed:', err))
+        await mydata.sendMail(emailBody).catch((err) => console.log('Email send failed:', err))
 
         res.status(202).json({
             success: true,
