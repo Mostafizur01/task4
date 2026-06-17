@@ -1,4 +1,5 @@
 import express from 'express'
+import cors from 'cors'
 import crypto from 'crypto'
 import nodemailer from 'nodemailer'
 import User from './models/user.js'
@@ -14,6 +15,11 @@ const app = express()
 const port = process.env.PORT || 3000
 
 app.use(express.json())
+app.use(cors({
+    origin: 'https://task4-frontend-my0v.onrender.com',
+    credentials: true
+}))
+app.options('*', cors())
 connectMogoose()
 
 let mydata
