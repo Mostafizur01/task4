@@ -14,6 +14,41 @@ const app = express()
 const port = process.env.PORT || 3000
 app.use(express.json())
 
+// Global auth guard: enforce user existence and not-blocked for all endpoints
+// except public authentication routes. This guarantees server-side enforcement
+// even if frontend forgets to attach middleware.
+const publicPaths = [
+    '/api/register',
+    '/api/login',
+    '/api/verify',
+    '/api/forgotpass',
+    '/api/reset-password'
+]
+
+app.use(async (req, res, next) => {
+    if (req.method === 'OPTIONS') return next();
+    if (publicPaths.some(p => req.path.startsWith(p))) return next();
+
+    const token = req.headers.authorization?.split(' ')[1] || req.headers.islogin;
+    if (!token) {
+        return res.status(401).json({ success: false, error: 'Authentication required', redirectTo: `${process.env.FRONTEND_URL}/login` })
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || process.env.JWT)
+        const user = await User.findById(decoded.id)
+        if (!user) return res.status(401).json({ success: false, error: 'User not found', redirectTo: `${process.env.FRONTEND_URL}/login` })
+        if (user.status === 'blocked') return res.status(403).json({ success: false, error: 'Account blocked', redirectTo: `${process.env.FRONTEND_URL}/login` })
+
+        req.user = decoded
+        req.userDoc = user
+        next()
+    } catch (err) {
+        console.log('Auth guard error: ', err)
+        return res.status(401).json({ success: false, error: 'Token invalid or expired', redirectTo: `${process.env.FRONTEND_URL}/login` })
+    }
+})
+
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', 'https://task4-frontend-my0v.onrender.com')
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -28,6 +63,15 @@ app.use((req, res, next) => {
 
 
 connectMogoose()
+    .then(async () => {
+        try {
+            await User.init()
+            console.log('User indexes ensured')
+        } catch (indexErr) {
+            console.log('Index creation error:', indexErr)
+        }
+    })
+    .catch((err) => console.log('DB connection error: ', err))
 
 let mydata
 
@@ -68,12 +112,7 @@ app.post('/api/register', async (req, res) => {
             })
         }
 
-        if (password.length < 6) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Password must be at least 6 characters' 
-            })
-        }
+        
 
         const emailRegex = /^\s*[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}\s*$/
         if (!emailRegex.test(email)) {
@@ -122,7 +161,6 @@ app.post('/api/register', async (req, res) => {
             await mydata.sendMail(emailBody)
         } catch (emailError) {
             console.log('Email sending error:', emailError)
-            // Email sending failure shouldn't block registration
         }
         
         res.status(201).json({ 
@@ -166,7 +204,7 @@ app.post('/api/login', async (req, res) => {
     try {
         const { email, password } = req.body
 
-        if (!email || !password) {
+        if (!email) {
             return res.status(400).json({
                 success: false,
                 error: 'Email and password are required',
@@ -183,13 +221,6 @@ app.post('/api/login', async (req, res) => {
 
         if (user.status === 'blocked') {
             return res.status(403).json({ success: false, error: 'Your account is blocked!' })
-        }
-
-        if (!user.isVerified) {
-            return res.status(403).json({ 
-                success: false, 
-                error: 'Please verify your email before logging in' 
-            })
         }
 
         const isPasswordValid = await bcrypt.compare(password, user.password)
@@ -285,7 +316,6 @@ app.post('/api/reset-password/:token', async (req, res) => {
         const { token } = req.params
         const { newPassword, confirmPassword } = req.body
 
-        // Input validation
         if (!newPassword || !confirmPassword) {
             return res.status(400).json({ 
                 success: false, 
