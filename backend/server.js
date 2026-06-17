@@ -53,10 +53,22 @@ try {
 
 app.post('/api/register', async (req, res) => {
     try {
-        const { username, email, password } = req.body
-        const lowerEmail = email.toLowerCase()
-        const token = crypto.randomBytes(32).toString('hex')
-        const hashPassword = await bcrypt.hash(password, 10)
+        const { username, email, password } = req.body;
+        const lowerEmail = email.toLowerCase();
+
+        const existingUser = await User.findOne({ 
+            $or: [{ email: lowerEmail }, { username: username }] 
+        });
+
+        if (existingUser) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Email or Username already exists' 
+            });
+        }
+
+        const token = crypto.randomBytes(32).toString('hex');
+        const hashPassword = await bcrypt.hash(password, 10);
 
         const newUser = new User({
             username,
@@ -67,8 +79,7 @@ app.post('/api/register', async (req, res) => {
         });
         await newUser.save();
 
-        const jwtToken = jwt.sign({ id: newUser._id, email: lowerEmail }, process.env.JWT || 'asdfjhlahksdf', { expiresIn: '1d' });
-        const verifiedTokenLink = `${process.env.FRONTEND_URL}/api/verify/${token}`
+        const verifiedTokenLink = `${process.env.FRONTEND_URL}/api/verify/${token}`;
 
         const emailBody = {
             from: '"task4" <mostafizurrahmanmd43@gmail.com>',
@@ -77,12 +88,15 @@ app.post('/api/register', async (req, res) => {
             html: `<h1>Hello ${username}</h1><p>Click link to verify:</p><a href="${verifiedTokenLink}">Verify Account</a>`
         };
 
-        await mydata.sendMail(emailBody).catch(err => console.log('Email Error:', err))
-        res.status(201).json({ success: true, message: 'Check your email to verify.' })
+        await mydata.sendMail(emailBody).catch(err => console.log('Email Error:', err));
+        
+        res.status(201).json({ success: true, message: 'Check your email to verify.' });
+        
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message })
+        console.error('Registration Error:', error);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
-})
+});
 
 app.get('/api/verify/:token', async (req, res) => {
     try {
