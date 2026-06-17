@@ -13,13 +13,21 @@ import jwt from 'jsonwebtoken'
 dotenv.config()
 const app = express()
 const port = process.env.PORT || 3000
-
 app.use(express.json())
-app.use(cors({
-    origin: 'https://task4-frontend-my0v.onrender.com',
-    credentials: true
-}))
-app.options('*', cors())
+
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', 'https://task4-frontend-my0v.onrender.com');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, islogng');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
+
+
 connectMogoose()
 
 let mydata
