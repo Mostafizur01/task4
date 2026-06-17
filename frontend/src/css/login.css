@@ -1,0 +1,92 @@
+.main-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f3f4f6; 
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.form-card {
+  background-color: #ffffff;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 450px;
+}
+
+.form-title {
+  text-align: center;
+  color: #333333;
+  margin-bottom: 25px;
+  font-size: 24px;
+}
+
+.form-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 15px;  
+}
+
+.form-table td:first-child {
+  width: 30%;
+  font-weight: 600;
+  color: #4b5563;
+  vertical-align: middle;
+}
+
+.form-table td:last-child {
+  width: 70%;
+}
+
+.form-table input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  font-size: 14px;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.form-table input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 10px;
+  background-color: #2563eb; 
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.submit-btn:hover {
+  background-color: #1d4ed8;
+}
+
+.register-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+  color: #6b7280;
+  display: flex;
+  justify-content: space-between;
+}
+
+.register-link a {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.register-link a:hover {
+  text-decoration: underline;
+}
