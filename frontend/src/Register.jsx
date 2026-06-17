@@ -2,6 +2,7 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import './css/register.css'
+import { API_BASE_URL } from './apiConfig'
 
 export default function Register() {
   const [data, setData] = useState({
@@ -20,7 +21,7 @@ export default function Register() {
   const submit = async (e) => {
     e.preventDefault()
 
-    const post = await fetch(`/api/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+    const post = await fetch(`${API_BASE_URL}/api/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
     let resData = await post.json()
     
     if (post.ok && resData.success) {

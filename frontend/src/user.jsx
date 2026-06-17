@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { API_BASE_URL } from './apiConfig'
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -15,7 +16,7 @@ export default function UserManagement() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/admin/users', {
+      const res = await fetch(`${API_BASE_URL}/api/admin/users`, {
         method: 'GET',
         headers: { 'islogin': localStorage.getItem('token') || '' }
       });
@@ -75,7 +76,7 @@ export default function UserManagement() {
     if (selectedIds.length === 0) return;
     
     try {
-      const res = await fetch('/api/admin/actions', {
+      const res = await fetch(`${API_BASE_URL}/api/admin/actions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

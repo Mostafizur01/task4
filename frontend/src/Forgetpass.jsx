@@ -1,13 +1,14 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import './css/forgetpass.css'
+import { API_BASE_URL } from './apiConfig'
 
 export default function Forgetpass() {
   const [email, setEmail] = useState('')
 
   const submit = async (e) => {
     e.preventDefault()
-    const post = await fetch('/api/forgotpass', {
+    const post = await fetch(`${API_BASE_URL}/api/forgotpass`, {
       method: 'POST',
       headers: { 'Content-type': 'application/json' },
       body: JSON.stringify({ email })

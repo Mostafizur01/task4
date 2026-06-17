@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import './css/login.css'
+import { API_BASE_URL } from './apiConfig'
 
 export default function Login() {
   const [data, setData] = useState({
@@ -16,7 +17,7 @@ export default function Login() {
   const submit = async (e) => {
     e.preventDefault()
 
-    const post = await fetch('/api/login', {
+    const post = await fetch(`${API_BASE_URL}/api/login`, {
       method: 'POST',
       headers: { 'Content-type': 'application/json' },
       body: JSON.stringify({ email: data.email, password: data.pass })
