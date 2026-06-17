@@ -16,9 +16,13 @@ export default function UserManagement() {
 
   const fetchUsers = async () => {
     try {
+      const token = localStorage.getItem('token') || ''
       const res = await fetch(`${API_BASE_URL}/api/admin/users`, {
         method: 'GET',
-        headers: { 'islogin': localStorage.getItem('token') || '' }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'islogin': token
+        }
       });
       const data = await res.json();
       
@@ -76,11 +80,13 @@ export default function UserManagement() {
     if (selectedIds.length === 0) return;
     
     try {
+      const token = localStorage.getItem('token') || ''
       const res = await fetch(`${API_BASE_URL}/api/admin/actions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'islogin': localStorage.getItem('token') || ''
+          'Authorization': `Bearer ${token}`,
+          'islogin': token
         },
         body: JSON.stringify({ userIds: selectedIds, action })
       });

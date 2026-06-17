@@ -6,7 +6,8 @@ dotenv.config()
 
 const  login = async (req, res, next) => {
     try {
-        const token = req.header('islogin')
+        const authHeader = req.headers.authorization
+        const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : req.header('islogin')
         if (!token) {
             return res.status(250).json({ success: false, error: 'You have to login', redirectTo: `${process.env.FRONTEND_URL}/login`})
         }
