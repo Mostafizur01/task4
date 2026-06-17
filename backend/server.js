@@ -35,6 +35,8 @@ let mydata
 try {
     mydata = nodemailer.createTransport({
         service: 'gmail',
+        port: 587,
+        secure: false,
         auth: {
             user: 'mostafizurrahmanmd43@gmail.com',
             pass: process.env.EMAIL_PASS
