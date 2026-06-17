@@ -34,14 +34,17 @@ let mydata
 
 try {
     mydata = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
         port: 587,
-        secure: false,
+        secure: true,
         auth: {
             user: 'mostafizurrahmanmd43@gmail.com',
             pass: process.env.EMAIL_PASS
         },
-        tls: {rejectUnauthorized: false}
+        tls: {rejectUnauthorized: false},
+        connectionTimeout: 15000, 
+        greetingTimeout: 15000,
+        socketTimeout: 15000
     })
 } catch (error) {
     console.log('error on the email pass', error)
