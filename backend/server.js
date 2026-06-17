@@ -137,7 +137,12 @@ app.post('/api/login', async (req, res) => {
         user.lastLogin = Date.now()
         await user.save()
         const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT || 'asdfjhlahksdf', { expiresIn: '1d' })
-        return res.status(200).json({ success: true, message: 'you are successfuly login', token, redirectTo: `${process.env.FRONTEND_URL}/user` })
+        return res.status(200).json({ 
+            success: true, 
+            message: 'Login successful', 
+            token: token, 
+            redirectTo: `${process.env.FRONTEND_URL}/user` 
+        })
     } catch (error) {
         console.log('the problem is on login page: ', error)
         return res.status(500).json({ success: false, error: 'Server error during login' })
