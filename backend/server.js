@@ -20,7 +20,7 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, islogin')
     res.setHeader('Access-Control-Allow-Credentials', 'true')
-    
+
     if (req.method === 'OPTIONS') {
         return res.sendStatus(200)
     }
@@ -38,10 +38,10 @@ try {
         port: 587,
         secure: false,
         auth: {
-            user: process.env.EMAIL_USER, 
-            pass: process.env.EMAIL_PASS  
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
         },
-        connectionTimeout: 20000, 
+        connectionTimeout: 20000,
         greetingTimeout: 20000,
         socketTimeout: 20000
     });
@@ -54,81 +54,59 @@ try {
 app.post('/api/register', async (req, res) => {
     try {
         const { username, email, password } = req.body
+        const lowerEmail = email.toLowerCase()
         const token = crypto.randomBytes(32).toString('hex')
         const hashPassword = await bcrypt.hash(password, 10)
 
         const newUser = new User({
             username,
-            email,
+            email: lowerEmail,
             password: hashPassword,
             verifiedToken: token,
             status: 'unverified'
-        })
-        await newUser.save()
+        });
+        await newUser.save();
 
-        const jwtToken = jwt.sign({ id: newUser._id, email: newUser.email }, process.env.JWT || 'asdfjhlahksdf', { expiresIn: '1d' })
-        const verifiedTokenLink = `${process.env.BACKEND_URL}/api/verify/${jwtToken}`
+        const jwtToken = jwt.sign({ id: newUser._id, email: lowerEmail }, process.env.JWT || 'asdfjhlahksdf', { expiresIn: '1d' });
+        const verifiedTokenLink = `${process.env.FRONTEND_URL}/api/verify/${token}`
+
         const emailBody = {
             from: '"task4" <mostafizurrahmanmd43@gmail.com>',
-            to: email,
+            to: lowerEmail,
             subject: 'Please verify your account',
-            html: `
-                <h1>hello ${username}</h1>
-                <p>Thank you for registering. Please click the link below to verify your account:</p>
-                <a href="${verifiedTokenLink}" style="background: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Verify Account</a>
-                <p>If the button doesn't work, copy and paste this link into your browser:</p>
-                <p>${verifiedTokenLink}</p>
-                `
-        }
+            html: `<h1>Hello ${username}</h1><p>Click link to verify:</p><a href="${verifiedTokenLink}">Verify Account</a>`
+        };
 
-        await mydata.sendMail(emailBody).catch((err) => console.log('Email send failed:', err))
-
-        res.status(202).json({
-            success: true,
-            message: 'Register successful. Please verify your email.',
-            token: jwtToken,
-            redirectTo: `${process.env.FRONTEND_URL}/user`
-        })
-
+        await mydata.sendMail(emailBody).catch(err => console.log('Email Error:', err))
+        res.status(201).json({ success: true, message: 'Check your email to verify.' })
     } catch (error) {
-        if (error.code === 11000) {
-            return res.status(400).json({ success: false, error: 'Email already registered (DB Index Validation)' })
-        }
         res.status(500).json({ success: false, error: error.message })
     }
 })
 
 app.get('/api/verify/:token', async (req, res) => {
     try {
-        const { token } = req.params
-
+        const { token } = req.params;
         const user = await User.findOne({ verifiedToken: token })
-        if (!user) {
-            return res.redirect(`${process.env.FRONTEND_URL}/`)
-        }
+        if (!user) return res.redirect(`${process.env.FRONTEND_URL}/`)
 
         user.isVerified = true
         user.verifiedToken = undefined
-        if (user.status !== 'blocked') {
-            user.status = 'active'
-        }
-
-        await user.save()
+        user.status = 'active'
+        await user.save();
 
         return res.redirect(`${process.env.FRONTEND_URL}/user`)
-
     } catch (error) {
-        console.log('verify route error:', error)
-        return res.status(500).send('Verification failed')
+        res.status(500).send('Verification failed')
     }
 })
 
 
 app.post('/api/login', async (req, res) => {
     try {
-        const {email, password} = req.body
-        const user = await User.findOne({ email })
-        if(!user) {
+        const { email, password } = req.body
+        const user = await User.findOne({ email: email.toLowerCase() })
+        if (!user) {
             return res.status(404).json({
                 success: false,
                 error: 'You don\'t have any account',
@@ -144,11 +122,11 @@ app.post('/api/login', async (req, res) => {
         user.lastLogin = Date.now()
         await user.save()
         const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT || 'asdfjhlahksdf', { expiresIn: '1d' })
-        return res.status(200).json({ 
-            success: true, 
-            message: 'Login successful', 
-            token: token, 
-            redirectTo: `${process.env.FRONTEND_URL}/user` 
+        return res.status(200).json({
+            success: true,
+            message: 'Login successful',
+            token: token,
+            redirectTo: `${process.env.FRONTEND_URL}/user`
         })
     } catch (error) {
         console.log('the problem is on login page: ', error)
@@ -158,7 +136,7 @@ app.post('/api/login', async (req, res) => {
 
 app.post('/api/forgotpass', async (req, res) => {
     try {
-        const {email} = req.body
+        const { email } = req.body
         const user = await User.findOne({ email })
         if (!user) {
             return res.status(200).json({
@@ -177,7 +155,7 @@ app.post('/api/forgotpass', async (req, res) => {
         const emailBody = {
             from: '"task4" <mostafizurrahmanmd43@gmail.com>',
             to: email,
-            subject: 'Password Reset Request', 
+            subject: 'Password Reset Request',
             html: `
                 <h1>Hello ${user.username || 'User'}</h1> 
                 <p>You requested a password reset. Please click the link below to reset your password:</p>
@@ -200,24 +178,16 @@ app.post('/api/forgotpass', async (req, res) => {
 
 app.get('/api/reset-password/:token', async (req, res) => {
     try {
-        const {token} = req.params
-
+        const { token } = req.params;
         const user = await User.findOne({
-            resetTokenPass: token,
-            resetTokenExp: {$gt: Date.now()}
-        })
-        if(!user) {
-            return res.status(200).json({
-                success: false,
-                error:  'Retry'
-            })
-        }
-        return res.status(201).json({
-            success: true,
-            message: 'Successfuly login'
-        })
+            resetPassToken: token, 
+            resetPassExp: { $gt: Date.now() }
+        });
+        if (!user) return res.status(400).json({ success: false, error: 'Invalid or expired token' });
+        
+        return res.status(200).json({ success: true, message: 'Token is valid' })
     } catch (error) {
-        console.log('reset-password rout problem:', error)
+        res.status(500).json({ success: false, error: 'Server error' })
     }
 })
 
