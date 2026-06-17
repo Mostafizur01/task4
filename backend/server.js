@@ -6,7 +6,6 @@ import User from './models/user.js'
 import bcrypt from 'bcrypt'
 import dotenv from 'dotenv'
 import connectMogoose from './models/mongooseConnact.js'
-import { errorMonitor } from 'events'
 import login from './middleware/isLogin.js'
 import jwt from 'jsonwebtoken'
 
@@ -54,16 +53,47 @@ try {
 app.post('/api/register', async (req, res) => {
     try {
         const { username, email, password } = req.body
-        const lowerEmail = email.toLowerCase();
+
+        if (!username || !email || !password) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Username, email, and password are required' 
+            })
+        }
+
+        if (username.trim().length < 3) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Username must be at least 3 characters' 
+            })
+        }
+
+        if (password.length < 6) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Password must be at least 6 characters' 
+            })
+        }
+
+        const emailRegex = /^\s*[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}\s*$/
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Invalid email format' 
+            })
+        }
+
+        const lowerEmail = email.toLowerCase().trim();
+        const trimmedUsername = username.trim();
 
         const existingUser = await User.findOne({ 
-            $or: [{ email: lowerEmail }, { username: username }] 
+            $or: [{ email: lowerEmail }, { username: trimmedUsername }] 
         })
 
         if (existingUser) {
-            return res.status(400).json({ 
+            return res.status(409).json({ 
                 success: false, 
-                error: 'Email or Username already exists' 
+                error: existingUser.email === lowerEmail ? 'Email already registered' : 'Username already taken'
             })
         }
 
@@ -71,7 +101,7 @@ app.post('/api/register', async (req, res) => {
         const hashPassword = await bcrypt.hash(password, 10)
 
         const newUser = new User({
-            username,
+            username: trimmedUsername,
             email: lowerEmail,
             password: hashPassword,
             verifiedToken: token,
@@ -85,14 +115,19 @@ app.post('/api/register', async (req, res) => {
             from: '"task4" <mostafizurrahmanmd43@gmail.com>',
             to: lowerEmail,
             subject: 'Please verify your account',
-            html: `<h1>Hello ${username}</h1><p>Click link to verify:</p><a href="${verifiedTokenLink}">Verify Account</a>`
+            html: `<h1>Hello ${trimmedUsername}</h1><p>Click link to verify:</p><a href="${verifiedTokenLink}">Verify Account</a>`
         }
 
-        await mydata.sendMail(emailBody).catch(err => console.log('Email Error:', err))
+        try {
+            await mydata.sendMail(emailBody)
+        } catch (emailError) {
+            console.log('Email sending error:', emailError)
+            // Email sending failure shouldn't block registration
+        }
         
         res.status(201).json({ 
             success: true, 
-            message: 'Check your email to verify.',
+            message: 'Registration successful. Check your email to verify.',
             redirectTo: `${process.env.FRONTEND_URL}/user` 
         })
         
@@ -106,7 +141,13 @@ app.get('/api/verify/:token', async (req, res) => {
     try {
         const { token } = req.params;
         const user = await User.findOne({ verifiedToken: token })
-        if (!user) return res.redirect(`${process.env.FRONTEND_URL}/`)
+        if (!user) {
+            return res.redirect(`${process.env.FRONTEND_URL}/`)
+        }
+
+        if (user.isVerified) {
+            return res.redirect(`${process.env.FRONTEND_URL}/user`)
+        }
 
         user.isVerified = true
         user.verifiedToken = undefined
@@ -115,7 +156,8 @@ app.get('/api/verify/:token', async (req, res) => {
 
         return res.redirect(`${process.env.FRONTEND_URL}/user`)
     } catch (error) {
-        res.status(500).send('Verification failed')
+        console.log('Email verification error: ', error)
+        return res.redirect(`${process.env.FRONTEND_URL}/`)
     }
 })
 
@@ -123,23 +165,41 @@ app.get('/api/verify/:token', async (req, res) => {
 app.post('/api/login', async (req, res) => {
     try {
         const { email, password } = req.body
-        const user = await User.findOne({ email: email.toLowerCase() })
-        if (!user) {
-            return res.status(404).json({
+
+        if (!email || !password) {
+            return res.status(400).json({
                 success: false,
-                error: 'You don\'t have any account',
+                error: 'Email and password are required',
             })
         }
+
+        const user = await User.findOne({ email: email.toLowerCase().trim() })
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid email or password',
+            })
+        }
+
         if (user.status === 'blocked') {
             return res.status(403).json({ success: false, error: 'Your account is blocked!' })
         }
+
+        if (!user.isVerified) {
+            return res.status(403).json({ 
+                success: false, 
+                error: 'Please verify your email before logging in' 
+            })
+        }
+
         const isPasswordValid = await bcrypt.compare(password, user.password)
         if (!isPasswordValid) {
             return res.status(401).json({ success: false, error: 'Invalid email or password' })
         }
+
         user.lastLogin = Date.now()
         await user.save()
-        const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT || 'asdfjhlahksdf', { expiresIn: '1d' })
+        const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET || process.env.JWT, { expiresIn: '1d' })
         return res.status(200).json({
             success: true,
             message: 'Login successful',
@@ -147,7 +207,7 @@ app.post('/api/login', async (req, res) => {
             redirectTo: `${process.env.FRONTEND_URL}/user`
         })
     } catch (error) {
-        console.log('the problem is on login page: ', error)
+        console.log('Login error: ', error)
         return res.status(500).json({ success: false, error: 'Server error during login' })
     }
 })
@@ -155,12 +215,18 @@ app.post('/api/login', async (req, res) => {
 app.post('/api/forgotpass', async (req, res) => {
     try {
         const { email } = req.body
-        const user = await User.findOne({ email })
-        if (!user) {
-            return res.status(200).json({
+        if (!email || !email.trim()) {
+            return res.status(400).json({
                 success: false,
-                error: 'You dont have any account',
-                redirectTo: `${process.env.FRONTEND_URL}`
+                error: 'Email is required'
+            })
+        }
+
+        const user = await User.findOne({ email: email.toLowerCase() })
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: 'No account found with this email'
             })
         }
         const token = crypto.randomBytes(32).toString('hex')
@@ -172,7 +238,7 @@ app.post('/api/forgotpass', async (req, res) => {
         const resetTokenLink = `${process.env.FRONTEND_URL}/reset-password/${token}`
         const emailBody = {
             from: '"task4" <mostafizurrahmanmd43@gmail.com>',
-            to: email,
+            to: email.toLowerCase(),
             subject: 'Password Reset Request',
             html: `
                 <h1>Hello ${user.username || 'User'}</h1> 
@@ -183,14 +249,19 @@ app.post('/api/forgotpass', async (req, res) => {
                 <p>This link will expire in 1 hour.</p>
             `
         }
-        await mydata.sendMail(emailBody)
+        try {
+            await mydata.sendMail(emailBody)
+        } catch (emailError) {
+            console.log('Email sending error:', emailError)
+        }
 
-        return res.status(250).json({
+        return res.status(200).json({
             success: true,
-            message: 'we sent password reset instructions.'
+            message: 'Password reset instructions sent to your email.'
         })
     } catch (error) {
-        console.log('The error on forgetpass rout: ', error)
+        console.log('Forgot password error: ', error)
+        return res.status(500).json({ success: false, error: 'Server error' })
     }
 })
 
@@ -206,6 +277,63 @@ app.get('/api/reset-password/:token', async (req, res) => {
         return res.status(200).json({ success: true, message: 'Token is valid' })
     } catch (error) {
         res.status(500).json({ success: false, error: 'Server error' })
+    }
+})
+
+app.post('/api/reset-password/:token', async (req, res) => {
+    try {
+        const { token } = req.params
+        const { newPassword, confirmPassword } = req.body
+
+        // Input validation
+        if (!newPassword || !confirmPassword) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Password and confirmation are required' 
+            })
+        }
+
+        if (newPassword !== confirmPassword) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Passwords do not match' 
+            })
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Password must be at least 6 characters' 
+            })
+        }
+
+        const user = await User.findOne({
+            resetPassToken: token,
+            resetPassExp: { $gt: Date.now() }
+        })
+
+        if (!user) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Invalid or expired reset token' 
+            })
+        }
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10)
+        user.password = hashedPassword
+        user.resetPassToken = undefined
+        user.resetPassExp = undefined
+        await user.save()
+
+        return res.status(200).json({
+            success: true,
+            message: 'Password reset successfully. You can now login.',
+            redirectTo: `${process.env.FRONTEND_URL}/login`
+        })
+    } catch (error) {
+        console.log('Password reset error: ', error)
+        return res.status(500).json({ success: false, error: 'Server error during password reset' })
     }
 })
 
@@ -269,5 +397,5 @@ app.post('/api/admin/actions', login, async (req, res) => {
 })
 
 app.listen(port, () => {
-    console.log(`surver run at port ${process.env.BACKEND_URL}:${port}`)
+    console.log(`Server running at port ${port}`)
 })

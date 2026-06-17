@@ -4,15 +4,14 @@ import User from '../models/user.js'
 
 dotenv.config()
 
-const  login = async (req, res, next) => {
+const login = async (req, res, next) => {
     try {
         const token = req.headers.authorization?.split(' ')[1] || 
-                      req.headers.islogin || 
-                      req.headers.islogng;
+                      req.headers.islogin;
         if (!token) {
-            return res.status(250).json({ success: false, error: 'You have to login', redirectTo: `${process.env.FRONTEND_URL}/login`})
+            return res.status(401).json({ success: false, error: 'You have to login', redirectTo: `${process.env.FRONTEND_URL}/login`})
         }
-        const decoded = jwt.verify(token, process.env.JWT || 'asdfjhlahksdf')
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || process.env.JWT)
         const user = await User.findById(decoded.id)
         if (!user) {
             return res.status(401).json({ success: false, error: 'Invalid token or user not found', redirectTo: `${process.env.FRONTEND_URL}/login`})
@@ -24,7 +23,7 @@ const  login = async (req, res, next) => {
         req.userDoc = user
         next()
     } catch (error) {
-        console.log ('middleware problem: ', error)
+        console.log ('Middleware auth error: ', error)
         return res.status(401).json({
             success: false,
             error: 'Token expired or invalid', 
