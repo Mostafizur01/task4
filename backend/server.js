@@ -99,39 +99,39 @@ app.post('/api/register', async (req, res) => {
         const { username, email, password } = req.body
 
         if (!username || !email || !password) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Username, email, and password are required' 
+            return res.status(400).json({
+                success: false,
+                error: 'Username, email, and password are required'
             })
         }
 
         if (username.trim().length < 3) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Username must be at least 3 characters' 
+            return res.status(400).json({
+                success: false,
+                error: 'Username must be at least 3 characters'
             })
         }
 
-        
+
 
         const emailRegex = /^\s*[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}\s*$/
         if (!emailRegex.test(email)) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Invalid email format' 
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid email format'
             })
         }
 
         const lowerEmail = email.toLowerCase().trim();
         const trimmedUsername = username.trim();
 
-        const existingUser = await User.findOne({ 
-            $or: [{ email: lowerEmail }, { username: trimmedUsername }] 
+        const existingUser = await User.findOne({
+            $or: [{ email: lowerEmail }, { username: trimmedUsername }]
         })
 
         if (existingUser) {
-            return res.status(409).json({ 
-                success: false, 
+            return res.status(409).json({
+                success: false,
                 error: existingUser.email === lowerEmail ? 'Email already registered' : 'Username already taken'
             })
         }
@@ -162,13 +162,13 @@ app.post('/api/register', async (req, res) => {
         } catch (emailError) {
             console.log('Email sending error:', emailError)
         }
-        
-        res.status(201).json({ 
-            success: true, 
+
+        res.status(201).json({
+            success: true,
             message: 'Registration successful. Check your email to verify.',
-            redirectTo: `${process.env.FRONTEND_URL}/user` 
+            redirectTo: `${process.env.FRONTEND_URL}/user`
         })
-        
+
     } catch (error) {
         console.error('Registration Error:', error);
         res.status(500).json({ success: false, error: 'Internal Server Error' });
@@ -204,7 +204,7 @@ app.post('/api/login', async (req, res) => {
     try {
         const { email, password } = req.body
 
-        if (!email) {
+        if (!email || !password) {
             return res.status(400).json({
                 success: false,
                 error: 'Email and password are required',
@@ -300,11 +300,11 @@ app.get('/api/reset-password/:token', async (req, res) => {
     try {
         const { token } = req.params;
         const user = await User.findOne({
-            resetPassToken: token, 
+            resetPassToken: token,
             resetPassExp: { $gt: Date.now() }
         });
         if (!user) return res.status(400).json({ success: false, error: 'Invalid or expired token' });
-        
+
         return res.status(200).json({ success: true, message: 'Token is valid' })
     } catch (error) {
         res.status(500).json({ success: false, error: 'Server error' })
@@ -317,23 +317,23 @@ app.post('/api/reset-password/:token', async (req, res) => {
         const { newPassword, confirmPassword } = req.body
 
         if (!newPassword || !confirmPassword) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Password and confirmation are required' 
+            return res.status(400).json({
+                success: false,
+                error: 'Password and confirmation are required'
             })
         }
 
         if (newPassword !== confirmPassword) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Passwords do not match' 
+            return res.status(400).json({
+                success: false,
+                error: 'Passwords do not match'
             })
         }
 
         if (newPassword.length < 6) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Password must be at least 6 characters' 
+            return res.status(400).json({
+                success: false,
+                error: 'Password must be at least 6 characters'
             })
         }
 
@@ -343,13 +343,12 @@ app.post('/api/reset-password/:token', async (req, res) => {
         })
 
         if (!user) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Invalid or expired reset token' 
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid or expired reset token'
             })
         }
 
-        // Hash new password
         const hashedPassword = await bcrypt.hash(newPassword, 10)
         user.password = hashedPassword
         user.resetPassToken = undefined
@@ -406,6 +405,13 @@ app.post('/api/admin/actions', login, async (req, res) => {
                 const activeUpdate = await User.updateMany({ _id: { $in: userIds }, status: 'blocked', isVerified: true }, { $set: { status: 'active' } })
                 const unverifiedUpdate = await User.updateMany({ _id: { $in: userIds }, status: 'blocked', isVerified: false }, { $set: { status: 'unverified' } })
                 message = `${activeUpdate.modifiedCount + unverifiedUpdate.modifiedCount} user(s) unblocked`
+                break
+            case 'verified':
+                result = await User.updateMany(
+                    { _id: { $in: userIds } },
+                    { $set: { isVerified: true, status: 'active' } }
+                )
+                message = `${result.modifiedCount} user(s) verified`
                 break
             case 'delete':
                 result = await User.deleteMany({ _id: { $in: userIds } })

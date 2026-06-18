@@ -26,6 +26,8 @@ export default function UserManagement() {
       });
       const data = await res.json();
       
+     
+
       if (data.success) {
         setUsers(data.users);
         if (activeUserDetail) {
@@ -77,7 +79,10 @@ export default function UserManagement() {
   };
 
   const handleToolbarAction = async (action) => {
-    if (selectedIds.length === 0) return;
+    if (selectedIds.length === 0) {
+    setStatusMessage({ text: 'Please select at least one user', isError: true });
+    return
+  }
     
     try {
       const token = localStorage.getItem('token') || ''
@@ -93,12 +98,12 @@ export default function UserManagement() {
       const data = await res.json();
       
       if (data.success) {
-        setStatusMessage({ text: data.message, isError: false });
+        setStatusMessage({ text: data.message, isError: false })
+        await fetchUsers()
         if (action === 'delete' || action === 'delete_unverified') {
           setActiveUserDetail(null);
         }
-        setSelectedIds([]); 
-        fetchUsers(); 
+        setSelectedIds([]) 
       } else {
         setStatusMessage({ text: data.error, isError: true });
         if (data.redirectTo) navigate(data.redirectTo);
@@ -125,6 +130,9 @@ export default function UserManagement() {
         <h4 className="text-secondary fw-normal">User Operations Console</h4>
         <button className="btn btn-sm btn-outline-secondary" onClick={handleLogout}>
           <i className="bi bi-box-arrow-right me-1"></i> Logout
+        </button>
+        <button className="btn btn-sm btn-outline-secondary" onClick={() => handleToolbarAction('verified')} disabled={selectedIds.length === 0}>
+          <i className="bi bi-box-arrow-right me-1"></i> Verified
         </button>
       </div>
 
